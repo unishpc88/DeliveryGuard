@@ -397,6 +397,10 @@ if len(st.session_state.prediction_history) > 0:
         history_df["Status"] == "🔴 High Delivery Time"
     ).sum()
 
+    high_rate = (
+        high_count / total_predictions
+    ) * 100
+
     col1, col2, col3, col4 = st.columns(4)
 
     with col1:
@@ -419,18 +423,14 @@ if len(st.session_state.prediction_history) > 0:
 
     with col4:
         st.metric(
-            "🔴 High",
-            high_count
-        )
+        "High Delivery Rate",
+        f"{high_rate:.1f}%"
+    )
 
     st.write("### 📊 Delivery Status Distribution")
 
 status_chart = pd.DataFrame({
-    "Status": [
-        "Normal",
-        "Moderate",
-        "High"
-    ],
+    "Status": ["Normal", "Moderate", "High"],
     "Count": [
         normal_count,
         moderate_count,
@@ -439,5 +439,12 @@ status_chart = pd.DataFrame({
 })
 
 st.bar_chart(
-    status_chart.set_index("Status")
+    status_chart,
+    x="Status",
+    y="Count"
+)
+
+st.dataframe(
+    status_chart,
+    hide_index=True
 )
