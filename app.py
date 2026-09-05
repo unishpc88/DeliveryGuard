@@ -2,12 +2,16 @@ import streamlit as st
 import joblib
 import math
 import pandas as pd
+import shap
 
 st.title("DeliveryGuard")
 st.write("Food Delivery Time Prediction System")
 
 model_path = "models/deliveryguard_model.pkl"
 model = joblib.load(model_path)
+explainer = shap.TreeExplainer(
+    model.named_steps["model"]
+)
 
 st.success("Model loaded successfully!")
 
@@ -232,4 +236,111 @@ st.dataframe(input_data)
 
 if st.button("Predict Delivery Time"):
     prediction = model.predict(input_data)[0]
-    st.success(f"Predicted Delivery Time: {prediction:.1f} minutes")
+
+    processed_input = model.named_steps["preprocessor"].transform(input_data)
+
+    shap_values = explainer.shap_values(processed_input)
+
+    local_explanation = pd.DataFrame({
+        "Feature": model.named_steps["preprocessor"].get_feature_names_out(),
+        "SHAP_Value": shap_values[0]
+    })
+
+    local_explanation["Absolute_SHAP"] = (
+        local_explanation["SHAP_Value"].abs()
+    )
+
+    top_factors = local_explanation.sort_values(
+        "Absolute_SHAP",
+        ascending=False
+    ).head(6)
+
+    feature_labels = {
+        "num__distance_km": "📍 Distance",
+        "num__Delivery_person_Ratings": "⭐ Delivery Person Rating",
+        "num__Delivery_person_Age": "👤 Delivery Person Age",
+        "num__Vehicle_condition": "🛵 Vehicle Condition",
+        "num__multiple_deliveries": "📦 Multiple Deliveries",
+        "cat__Road_traffic_density_Low": "🚦 Low Traffic",
+        "cat__Road_traffic_density_Medium": "🚦 Medium Traffic",
+        "cat__Road_traffic_density_High": "🚦 High Traffic",
+        "cat__Road_traffic_density_Jam": "🚦 Jam Traffic",
+        "cat__Weatherconditions_conditions Sunny": "☀️ Sunny Weather",
+        "cat__Weatherconditions_conditions Cloudy": "☁️ Cloudy Weather",
+        "cat__Weatherconditions_conditions Fog": "🌫️ Foggy Weather",
+        "cat__Weatherconditions_conditions Stormy": "⛈️ Stormy Weather",
+        "cat__Weatherconditions_conditions Sandstorms": "🌪️ Sandstorms",
+        "cat__Weatherconditions_conditions Windy": "💨 Windy Weather",
+        "num__Order_Hour": "🕐 Order Hour",
+        "num__Order_Picked_Hour": "🕐 Pickup Hour",
+        "num__Preparation_Time_min": "🍳 Preparation Time"
+    }
+
+    feature_values = {
+        "num__distance_km": f"📍 Distance ({distance_km:.1f} km)",
+        "num__Delivery_person_Ratings": f"⭐ Delivery Person Rating ({delivery_rating:.1f})",
+        "num__Delivery_person_Age": f"👤 Delivery Person Age ({delivery_age:.0f})",
+        "num__Vehicle_condition": f"🛵 Vehicle Condition ({vehicle_condition})",
+        "num__multiple_deliveries": f"📦 Multiple Deliveries ({multiple_deliveries:.0f})",
+        "cat__Road_traffic_density_Low": "🚦 Low Traffic",
+        "cat__Road_traffic_density_Medium": "🚦 Medium Traffic",
+        "cat__Road_traffic_density_High": "🚦 High Traffic",
+        "cat__Road_traffic_density_Jam": "🚦 Jam Traffic",
+        "cat__Weatherconditions_conditions Sunny": "☀️ Sunny Weather",
+        "cat__Weatherconditions_conditions Cloudy": "☁️ Cloudy Weather",
+        "cat__Weatherconditions_conditions Fog": "🌫️ Foggy Weather",
+        "cat__Weatherconditions_conditions Stormy": "⛈️ Stormy Weather",
+        "cat__Weatherconditions_conditions Sandstorms": "🌪️ Sandstorms",
+        "cat__Weatherconditions_conditions Windy": "💨 Windy Weather",
+        "num__Order_Hour": f"🕐 Order Hour ({order_hour}:00)",
+        "num__Order_Picked_Hour": f"🕐 Pickup Hour ({order_picked_hour}:00)",
+        "num__Preparation_Time_min": f"🍳 Preparation Time ({preparation_time:.1f} min)"
+    }
+
+    top_factors["Feature"] = top_factors["Feature"].map(
+        lambda x: feature_values.get(
+            x,
+            feature_labels.get(x, x)
+        )
+    )
+
+    st.subheader("DeliveryGuard Result")
+
+    st.success(
+        f"Estimated Delivery Time: {prediction:.1f} minutes"
+    )
+
+    if prediction <= 21:
+        st.info("🟢 Normal Delivery")
+    elif prediction < 30:
+        st.warning("🟡 Moderate Delivery Time")
+    else:
+        st.error("🔴 High Delivery Time")
+
+    st.subheader("🔍 Why this delivery time?")
+
+    increasing = top_factors[
+        top_factors["SHAP_Value"] > 0
+    ]
+
+    decreasing = top_factors[
+        top_factors["SHAP_Value"] < 0
+    ]
+
+    if len(increasing) > 0:
+        st.markdown("### ⬆️ Factors increasing delivery time")
+
+        for _, row in increasing.iterrows():
+            st.write(
+                f"{row['Feature']} — increased estimate by "
+                f"**{row['SHAP_Value']:.1f} min**"
+            )
+
+    if len(decreasing) > 0:
+        st.markdown("### ⬇️ Factors reducing delivery time")
+
+        for _, row in decreasing.iterrows():
+            st.write(
+                f"{row['Feature']} — reduced estimate by "
+                f"**{abs(row['SHAP_Value']):.1f} min**"
+            )
