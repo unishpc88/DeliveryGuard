@@ -373,3 +373,71 @@ if st.button("Predict Delivery Time"):
         history_df,
         hide_index=True
     )
+
+st.subheader("📈 DeliveryGuard Analytics")
+
+if len(st.session_state.prediction_history) > 0:
+    history_df = pd.DataFrame(
+        st.session_state.prediction_history
+    )
+
+    total_predictions = len(history_df)
+
+    average_prediction = history_df["Predicted Time"].mean()
+
+    normal_count = (
+        history_df["Status"] == "🟢 Normal Delivery"
+    ).sum()
+
+    moderate_count = (
+        history_df["Status"] == "🟡 Moderate Delivery Time"
+    ).sum()
+
+    high_count = (
+        history_df["Status"] == "🔴 High Delivery Time"
+    ).sum()
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        st.metric(
+            "Total Predictions",
+            total_predictions
+        )
+
+    with col2:
+        st.metric(
+            "Average Time",
+            f"{average_prediction:.1f} min"
+        )
+
+    with col3:
+        st.metric(
+            "🟢 Normal",
+            normal_count
+        )
+
+    with col4:
+        st.metric(
+            "🔴 High",
+            high_count
+        )
+
+    st.write("### 📊 Delivery Status Distribution")
+
+status_chart = pd.DataFrame({
+    "Status": [
+        "Normal",
+        "Moderate",
+        "High"
+    ],
+    "Count": [
+        normal_count,
+        moderate_count,
+        high_count
+    ]
+})
+
+st.bar_chart(
+    status_chart.set_index("Status")
+)
