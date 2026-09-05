@@ -4,6 +4,9 @@ import math
 import pandas as pd
 import shap
 
+if "prediction_history" not in st.session_state:
+    st.session_state.prediction_history = []
+
 st.title("DeliveryGuard")
 st.write("Food Delivery Time Prediction System")
 
@@ -304,18 +307,33 @@ if st.button("Predict Delivery Time"):
         )
     )
 
+    if prediction <= 21:
+        status = "🟢 Normal Delivery"
+    elif prediction < 30:
+        status = "🟡 Moderate Delivery Time"
+    else:
+        status = "🔴 High Delivery Time"
+
+    st.session_state.prediction_history.append({
+        "Predicted Time": round(prediction, 1),
+        "Status": status,
+        "Distance (km)": round(distance_km, 1),
+        "Traffic": traffic,
+        "Weather": weather.replace("conditions ", "")
+    })
+
     st.subheader("DeliveryGuard Result")
 
     st.success(
         f"Estimated Delivery Time: {prediction:.1f} minutes"
     )
 
-    if prediction <= 21:
-        st.info("🟢 Normal Delivery")
-    elif prediction < 30:
-        st.warning("🟡 Moderate Delivery Time")
+    if status == "🟢 Normal Delivery":
+        st.info(status)
+    elif status == "🟡 Moderate Delivery Time":
+        st.warning(status)
     else:
-        st.error("🔴 High Delivery Time")
+        st.error(status)
 
     st.subheader("🔍 Why this delivery time?")
 
@@ -344,3 +362,14 @@ if st.button("Predict Delivery Time"):
                 f"{row['Feature']} — reduced estimate by "
                 f"**{abs(row['SHAP_Value']):.1f} min**"
             )
+
+    st.subheader("📊 Prediction History")
+
+    history_df = pd.DataFrame(
+        st.session_state.prediction_history
+    )
+
+    st.dataframe(
+        history_df,
+        hide_index=True
+    )
