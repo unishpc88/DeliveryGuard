@@ -314,72 +314,69 @@ if st.button("Predict Delivery Time"):
     else:
         status = "🔴 High Delivery Time"
 
+    if distance_km < 5:
+        distance_category = "Short"
+    elif distance_km < 10:
+        distance_category = "Medium"
+    elif distance_km < 15:
+        distance_category = "Long"
+    else:
+        distance_category = "Very Long"
+
     st.session_state.prediction_history.append({
         "Predicted Time": round(prediction, 1),
         "Status": status,
         "Distance (km)": round(distance_km, 1),
+        "Distance Category": distance_category,
         "Traffic": traffic,
         "Weather": weather.replace("conditions ", "")
     })
 
-    st.subheader("DeliveryGuard Result")
+    st.success(f"Predicted Delivery Time: {prediction:.1f} minutes")
 
-    st.success(
-        f"Estimated Delivery Time: {prediction:.1f} minutes"
-    )
+    st.write(f"### Delivery Status: {status}")
 
-    if status == "🟢 Normal Delivery":
-        st.info(status)
-    elif status == "🟡 Moderate Delivery Time":
-        st.warning(status)
-    else:
-        st.error(status)
+    st.write("### 🔍 Top Factors Affecting This Prediction")
 
-    st.subheader("🔍 Why this delivery time?")
+    for _, row in top_factors.iterrows():
+        effect = row["SHAP_Value"]
 
-    increasing = top_factors[
-        top_factors["SHAP_Value"] > 0
-    ]
+        if effect > 0:
+            direction = "increased estimate by"
+        else:
+            direction = "reduced estimate by"
 
-    decreasing = top_factors[
-        top_factors["SHAP_Value"] < 0
-    ]
+        st.write(
+            f"{row['Feature']} — "
+            f"{direction} {abs(effect):.1f} min"
+        )
 
-    if len(increasing) > 0:
-        st.markdown("### ⬆️ Factors increasing delivery time")
 
-        for _, row in increasing.iterrows():
-            st.write(
-                f"{row['Feature']} — increased estimate by "
-                f"**{row['SHAP_Value']:.1f} min**"
-            )
+# =========================
+# Prediction History
+# =========================
 
-    if len(decreasing) > 0:
-        st.markdown("### ⬇️ Factors reducing delivery time")
-
-        for _, row in decreasing.iterrows():
-            st.write(
-                f"{row['Feature']} — reduced estimate by "
-                f"**{abs(row['SHAP_Value']):.1f} min**"
-            )
-
-    st.subheader("📊 Prediction History")
+if len(st.session_state.prediction_history) > 0:
 
     history_df = pd.DataFrame(
         st.session_state.prediction_history
     )
+
+    st.subheader("📊 Prediction History")
 
     st.dataframe(
         history_df,
         hide_index=True
     )
 
-st.subheader("📈 DeliveryGuard Analytics")
+
+# =========================
+# DeliveryGuard Analytics
+# =========================
 
 if len(st.session_state.prediction_history) > 0:
-    history_df = pd.DataFrame(
-        st.session_state.prediction_history
-    )
+
+    st.subheader("📈 DeliveryGuard Analytics")
 
     total_predictions = len(history_df)
 
@@ -423,28 +420,84 @@ if len(st.session_state.prediction_history) > 0:
 
     with col4:
         st.metric(
-        "High Delivery Rate",
-        f"{high_rate:.1f}%"
-    )
+            "High Delivery Rate",
+            f"{high_rate:.1f}%"
+        )
 
     st.write("### 📊 Delivery Status Distribution")
 
-status_chart = pd.DataFrame({
-    "Status": ["Normal", "Moderate", "High"],
-    "Count": [
-        normal_count,
-        moderate_count,
-        high_count
-    ]
-})
+    status_chart = pd.DataFrame({
+        "Status": [
+            "Normal",
+            "Moderate",
+            "High"
+        ],
+        "Count": [
+            normal_count,
+            moderate_count,
+            high_count
+        ]
+    })
 
-st.bar_chart(
-    status_chart,
-    x="Status",
-    y="Count"
-)
+    st.bar_chart(
+        status_chart,
+        x="Status",
+        y="Count"
+    )
 
-st.dataframe(
-    status_chart,
-    hide_index=True
-)
+    st.dataframe(
+        status_chart,
+        hide_index=True
+    )
+
+    st.write("### 🚦 Average Predicted Time by Traffic")
+
+    traffic_analysis = (
+        history_df
+        .groupby("Traffic")["Predicted Time"]
+        .mean()
+        .reset_index()
+    )
+
+    traffic_analysis["Predicted Time"] = (
+        traffic_analysis["Predicted Time"].round(1)
+    )
+
+    st.bar_chart(
+        traffic_analysis,
+        x="Traffic",
+        y="Predicted Time"
+    )
+
+    st.dataframe(
+        traffic_analysis,
+        hide_index=True
+    )
+
+    st.write("### 📍 Average Predicted Time by Distance")
+
+    distance_analysis = (
+        history_df
+        .groupby("Distance Category")["Predicted Time"]
+        .mean()
+        .reindex(
+            ["Short", "Medium", "Long", "Very Long"]
+        )
+        .dropna()
+        .reset_index()
+    )
+
+    distance_analysis["Predicted Time"] = (
+        distance_analysis["Predicted Time"].round(1)
+    )
+
+    st.bar_chart(
+        distance_analysis,
+        x="Distance Category",
+        y="Predicted Time"
+    )
+
+    st.dataframe(
+        distance_analysis,
+        hide_index=True
+    )
