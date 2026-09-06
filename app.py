@@ -365,7 +365,18 @@ if st.button("Predict Delivery Time"):
             f"{row['Feature']} — "
             f"{direction} {abs(effect):.1f} min"
         )
+    positive_factors = top_factors[
+        top_factors["SHAP_Value"] > 0
+    ]
+    if prediction >= 30 and len(positive_factors) > 0:
+        st.write("### 🧠 Why is this delivery high risk?")
 
+        for _, row in positive_factors.head(3).iterrows():
+            st.write(
+                f"🔴 {row['Feature']} "
+                f"→ adds {row['SHAP_Value']:.1f} minutes "
+                f"to the prediction."
+            )
 
 # =========================
 # Prediction History
