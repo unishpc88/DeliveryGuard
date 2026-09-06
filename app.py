@@ -501,3 +501,26 @@ if len(st.session_state.prediction_history) > 0:
         distance_analysis,
         hide_index=True
     )
+    st.write("### 🌦️ Average Predicted Time by Weather")
+
+    weather_analysis = (
+        history_df
+        .groupby("Weather")["Predicted Time"]
+        .mean()
+        .reset_index()
+    )
+
+    weather_analysis["Predicted Time"] = (
+        weather_analysis["Predicted Time"].round(1)
+    )
+
+    st.bar_chart(
+        weather_analysis,
+        x="Weather",
+        y="Predicted Time"
+    )
+
+    st.dataframe(
+        weather_analysis,
+        hide_index=True
+    )
