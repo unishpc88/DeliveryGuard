@@ -335,6 +335,21 @@ if st.button("Predict Delivery Time"):
     st.success(f"Predicted Delivery Time: {prediction:.1f} minutes")
 
     st.write(f"### Delivery Status: {status}")
+    if prediction >= 30:
+        st.warning(
+            "⚠️ High delivery risk detected. "
+            "Consider checking traffic, weather, distance, "
+            "and multiple-delivery conditions."
+        )
+    elif prediction >= 22:
+        st.info(
+            "🟡 Moderate delivery time. "
+            "Some conditions may be contributing to the delay."
+        )
+    else:
+        st.success(
+            "✅ Delivery conditions look favorable."
+        )
 
     st.write("### 🔍 Top Factors Affecting This Prediction")
 
