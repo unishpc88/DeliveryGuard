@@ -3,6 +3,7 @@ import joblib
 import math
 import pandas as pd
 import shap
+import numpy as np
 
 if "prediction_history" not in st.session_state:
     st.session_state.prediction_history = []
@@ -239,13 +240,41 @@ st.dataframe(input_data)
 
 if st.button("Predict Delivery Time"):
     prediction = model.predict(input_data)[0]
+    
+    processed_input = model.named_steps["preprocessor"].transform(
+        input_data
+    )
 
-    processed_input = model.named_steps["preprocessor"].transform(input_data)
+    # Prediction stability
+    tree_predictions = [
+        tree.predict(processed_input)[0]
+        for tree in model.named_steps["model"].estimators_
+    ]
+
+    prediction_std = np.std(tree_predictions)
+
+    if prediction_std < 1.77:
+        stability = "🟢 High Stability"
+        stability_message = (
+            "The model's trees are giving very similar predictions."
+        )
+    elif prediction_std <= 3.33:
+        stability = "🟡 Moderate Stability"
+        stability_message = (
+            "The model shows some variation between tree predictions."
+        )
+    else:
+        stability = "🔴 Low Stability"
+        stability_message = (
+            "The model's trees show higher variation in their predictions."
+        )
 
     shap_values = explainer.shap_values(processed_input)
 
     local_explanation = pd.DataFrame({
-        "Feature": model.named_steps["preprocessor"].get_feature_names_out(),
+        "Feature": model.named_steps[
+            "preprocessor"
+        ].get_feature_names_out(),
         "SHAP_Value": shap_values[0]
     })
 
@@ -281,10 +310,18 @@ if st.button("Predict Delivery Time"):
 
     feature_values = {
         "num__distance_km": f"📍 Distance ({distance_km:.1f} km)",
-        "num__Delivery_person_Ratings": f"⭐ Delivery Person Rating ({delivery_rating:.1f})",
-        "num__Delivery_person_Age": f"👤 Delivery Person Age ({delivery_age:.0f})",
-        "num__Vehicle_condition": f"🛵 Vehicle Condition ({vehicle_condition})",
-        "num__multiple_deliveries": f"📦 Multiple Deliveries ({multiple_deliveries:.0f})",
+        "num__Delivery_person_Ratings": (
+            f"⭐ Delivery Person Rating ({delivery_rating:.1f})"
+        ),
+        "num__Delivery_person_Age": (
+            f"👤 Delivery Person Age ({delivery_age:.0f})"
+        ),
+        "num__Vehicle_condition": (
+            f"🛵 Vehicle Condition ({vehicle_condition})"
+        ),
+        "num__multiple_deliveries": (
+            f"📦 Multiple Deliveries ({multiple_deliveries:.0f})"
+        ),
         "cat__Road_traffic_density_Low": "🚦 Low Traffic",
         "cat__Road_traffic_density_Medium": "🚦 Medium Traffic",
         "cat__Road_traffic_density_High": "🚦 High Traffic",
@@ -296,8 +333,12 @@ if st.button("Predict Delivery Time"):
         "cat__Weatherconditions_conditions Sandstorms": "🌪️ Sandstorms",
         "cat__Weatherconditions_conditions Windy": "💨 Windy Weather",
         "num__Order_Hour": f"🕐 Order Hour ({order_hour}:00)",
-        "num__Order_Picked_Hour": f"🕐 Pickup Hour ({order_picked_hour}:00)",
-        "num__Preparation_Time_min": f"🍳 Preparation Time ({preparation_time:.1f} min)"
+        "num__Order_Picked_Hour": (
+            f"🕐 Pickup Hour ({order_picked_hour}:00)"
+        ),
+        "num__Preparation_Time_min": (
+            f"🍳 Preparation Time ({preparation_time:.1f} min)"
+        )
     }
 
     top_factors["Feature"] = top_factors["Feature"].map(
@@ -307,6 +348,7 @@ if st.button("Predict Delivery Time"):
         )
     )
 
+    # Delivery status
     if prediction <= 21:
         status = "🟢 Normal Delivery"
     elif prediction < 30:
@@ -314,6 +356,7 @@ if st.button("Predict Delivery Time"):
     else:
         status = "🔴 High Delivery Time"
 
+    # Distance category
     if distance_km < 5:
         distance_category = "Short"
     elif distance_km < 10:
@@ -323,6 +366,7 @@ if st.button("Predict Delivery Time"):
     else:
         distance_category = "Very Long"
 
+    # Save prediction history
     st.session_state.prediction_history.append({
         "Predicted Time": round(prediction, 1),
         "Status": status,
@@ -332,9 +376,12 @@ if st.button("Predict Delivery Time"):
         "Weather": weather.replace("conditions ", "")
     })
 
-    st.success(f"Predicted Delivery Time: {prediction:.1f} minutes")
+    st.success(
+        f"Predicted Delivery Time: {prediction:.1f} minutes"
+    )
 
     st.write(f"### Delivery Status: {status}")
+
     if prediction >= 30:
         st.warning(
             "⚠️ High delivery risk detected. "
@@ -351,6 +398,16 @@ if st.button("Predict Delivery Time"):
             "✅ Delivery conditions look favorable."
         )
 
+    # Prediction stability
+    st.write("### 📊 Prediction Stability")
+    st.write(f"**{stability}**")
+    st.write(
+        f"The model's tree predictions vary by approximately "
+        f"**{prediction_std:.2f} minutes**."
+    )
+    st.caption(stability_message)
+
+    # SHAP explanation
     st.write("### 🔍 Top Factors Affecting This Prediction")
 
     for _, row in top_factors.iterrows():
@@ -365,9 +422,12 @@ if st.button("Predict Delivery Time"):
             f"{row['Feature']} — "
             f"{direction} {abs(effect):.1f} min"
         )
+
+    # Smart risk factors
     positive_factors = top_factors[
         top_factors["SHAP_Value"] > 0
     ]
+
     if prediction >= 30 and len(positive_factors) > 0:
         st.write("### 🧠 Why is this delivery high risk?")
 
