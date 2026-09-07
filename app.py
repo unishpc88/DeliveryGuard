@@ -368,6 +368,74 @@ if st.button("Predict Delivery Time"):
         y="Predicted Time (min)"
     )
 
+    # Compare different distance scenarios
+    distance_results = []
+
+    restaurant_lat = input_data["Restaurant_latitude"].iloc[0]
+    restaurant_lon = input_data["Restaurant_longitude"].iloc[0]
+
+    current_delivery_lat = input_data["Delivery_location_latitude"].iloc[0]
+    current_delivery_lon = input_data["Delivery_location_longitude"].iloc[0]
+
+    # Calculate current direction from restaurant to delivery location
+    lat_difference = current_delivery_lat - restaurant_lat
+    lon_difference = current_delivery_lon - restaurant_lon
+
+    direction_norm = np.sqrt(
+        lat_difference ** 2 + lon_difference ** 2
+    )
+
+    # Avoid division by zero
+    if direction_norm == 0:
+        direction_lat = 1
+        direction_lon = 0
+    else:
+        direction_lat = lat_difference / direction_norm
+        direction_lon = lon_difference / direction_norm
+
+    for target_distance in [5, 10, 15, 20]:
+
+        distance_input = input_data.copy()
+
+        # Approximate conversion from km to latitude/longitude degrees
+        lat_offset = (
+            target_distance * direction_lat / 111
+        )
+
+        lon_offset = (
+            target_distance * direction_lon /
+            (111 * np.cos(np.radians(restaurant_lat)))
+        )
+
+        new_delivery_lat = restaurant_lat + lat_offset
+        new_delivery_lon = restaurant_lon + lon_offset
+
+        distance_input["Delivery_location_latitude"] = new_delivery_lat
+        distance_input["Delivery_location_longitude"] = new_delivery_lon
+        distance_input["distance_km"] = target_distance
+
+        distance_prediction = model.predict(distance_input)[0]
+
+        distance_results.append({
+            "Distance (km)": target_distance,
+            "Predicted Time (min)": round(distance_prediction, 1)
+        })
+
+    distance_df = pd.DataFrame(distance_results)
+
+    st.write("### 📍 Distance Scenario Comparison")
+
+    st.dataframe(
+        distance_df,
+        hide_index=True
+    )
+
+    st.line_chart(
+        distance_df,
+        x="Distance (km)",
+        y="Predicted Time (min)"
+    )
+
     # Preprocess input for SHAP and prediction stability
     processed_input = model.named_steps["preprocessor"].transform(input_data)
 
