@@ -242,6 +242,63 @@ if st.button("Predict Delivery Time"):
 
     prediction = model.predict(input_data)[0]
 
+    # Create an alternative scenario with fewer multiple deliveries
+    scenario_input = input_data.copy()
+
+    scenario_input["multiple_deliveries"] = 1.0
+
+    scenario_prediction = model.predict(scenario_input)[0]
+
+    st.write("### 🔄 What-If Scenario")
+
+    st.write(
+        f"📦 If multiple deliveries are reduced to **1**, "
+        f"the predicted delivery time becomes **{scenario_prediction:.1f} minutes**."
+    )
+
+    time_saved = prediction - scenario_prediction
+
+    if time_saved > 0:
+        st.success(
+            f"⏱️ Potential time reduction: **{time_saved:.1f} minutes**"
+        )
+    elif time_saved < 0:
+        st.info(
+            f"⏱️ The alternative scenario is "
+            f"{abs(time_saved):.1f} minutes slower."
+        )
+    else:
+        st.info("⏱️ No predicted change in delivery time.")
+
+    # Compare all multiple-delivery scenarios
+    scenario_results = []
+
+    for deliveries in [0.0, 1.0, 2.0, 3.0]:
+
+        scenario = input_data.copy()
+        scenario["multiple_deliveries"] = deliveries
+
+        scenario_prediction = model.predict(scenario)[0]
+
+        scenario_results.append({
+        "Multiple Deliveries": int(deliveries),
+        "Predicted Time (min)": round(scenario_prediction, 1)
+    })
+
+    scenario_df = pd.DataFrame(scenario_results)
+
+    st.write("### 📊 Multiple-Delivery Scenario Comparison")
+
+    st.dataframe(
+        scenario_df,
+        hide_index=True
+    )
+    st.line_chart(
+        scenario_df,
+        x="Multiple Deliveries",
+        y="Predicted Time (min)"
+    )
+        
     # Preprocess input for SHAP and prediction stability
     processed_input = model.named_steps["preprocessor"].transform(input_data)
 
