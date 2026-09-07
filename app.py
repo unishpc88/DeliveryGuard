@@ -242,7 +242,10 @@ if st.button("Predict Delivery Time"):
 
     prediction = model.predict(input_data)[0]
 
-    # Create an alternative scenario with fewer multiple deliveries
+    # =========================================================
+    # Basic What-If Scenario: Reduce Multiple Deliveries to 1
+    # =========================================================
+
     scenario_input = input_data.copy()
 
     scenario_input["multiple_deliveries"] = 1.0
@@ -253,14 +256,16 @@ if st.button("Predict Delivery Time"):
 
     st.write(
         f"📦 If multiple deliveries are reduced to **1**, "
-        f"the predicted delivery time becomes **{scenario_prediction:.1f} minutes**."
+        f"the predicted delivery time becomes "
+        f"**{scenario_prediction:.1f} minutes**."
     )
 
     time_saved = prediction - scenario_prediction
 
     if time_saved > 0:
         st.success(
-            f"⏱️ Potential time reduction: **{time_saved:.1f} minutes**"
+            f"⏱️ Potential time reduction: "
+            f"**{time_saved:.1f} minutes**"
         )
     elif time_saved < 0:
         st.info(
@@ -270,7 +275,10 @@ if st.button("Predict Delivery Time"):
     else:
         st.info("⏱️ No predicted change in delivery time.")
 
-    # Compare all multiple-delivery scenarios
+    # =========================================================
+    # Multiple-Delivery Scenario Comparison
+    # =========================================================
+
     scenario_results = []
 
     for deliveries in [0.0, 1.0, 2.0, 3.0]:
@@ -281,9 +289,9 @@ if st.button("Predict Delivery Time"):
         scenario_prediction = model.predict(scenario)[0]
 
         scenario_results.append({
-        "Multiple Deliveries": int(deliveries),
-        "Predicted Time (min)": round(scenario_prediction, 1)
-    })
+            "Multiple Deliveries": int(deliveries),
+            "Predicted Time (min)": round(scenario_prediction, 1)
+        })
 
     scenario_df = pd.DataFrame(scenario_results)
 
@@ -293,13 +301,17 @@ if st.button("Predict Delivery Time"):
         scenario_df,
         hide_index=True
     )
+
     st.line_chart(
         scenario_df,
         x="Multiple Deliveries",
         y="Predicted Time (min)"
     )
 
-    # Compare different traffic scenarios
+    # =========================================================
+    # Traffic Scenario Comparison
+    # =========================================================
+
     traffic_results = []
 
     for traffic_scenario in ["Low", "Medium", "High", "Jam"]:
@@ -329,7 +341,10 @@ if st.button("Predict Delivery Time"):
         y="Predicted Time (min)"
     )
 
-    # Compare different weather scenarios
+    # =========================================================
+    # Weather Scenario Comparison
+    # =========================================================
+
     weather_results = []
 
     for weather_scenario in [
@@ -368,60 +383,116 @@ if st.button("Predict Delivery Time"):
         y="Predicted Time (min)"
     )
 
-    # Compare different distance scenarios
+    # =========================================================
+    # Distance Scenario Comparison
+    # =========================================================
+
     distance_results = []
 
-    restaurant_lat = input_data["Restaurant_latitude"].iloc[0]
-    restaurant_lon = input_data["Restaurant_longitude"].iloc[0]
+    restaurant_lat = input_data[
+        "Restaurant_latitude"
+    ].iloc[0]
 
-    current_delivery_lat = input_data["Delivery_location_latitude"].iloc[0]
-    current_delivery_lon = input_data["Delivery_location_longitude"].iloc[0]
+    restaurant_lon = input_data[
+        "Restaurant_longitude"
+    ].iloc[0]
 
-    # Calculate current direction from restaurant to delivery location
-    lat_difference = current_delivery_lat - restaurant_lat
-    lon_difference = current_delivery_lon - restaurant_lon
+    current_delivery_lat = input_data[
+        "Delivery_location_latitude"
+    ].iloc[0]
+
+    current_delivery_lon = input_data[
+        "Delivery_location_longitude"
+    ].iloc[0]
+
+    # Calculate current direction from restaurant
+    # to delivery location
+
+    lat_difference = (
+        current_delivery_lat - restaurant_lat
+    )
+
+    lon_difference = (
+        current_delivery_lon - restaurant_lon
+    )
 
     direction_norm = np.sqrt(
-        lat_difference ** 2 + lon_difference ** 2
+        lat_difference ** 2 +
+        lon_difference ** 2
     )
 
     # Avoid division by zero
+
     if direction_norm == 0:
         direction_lat = 1
         direction_lon = 0
     else:
-        direction_lat = lat_difference / direction_norm
-        direction_lon = lon_difference / direction_norm
+        direction_lat = (
+            lat_difference / direction_norm
+        )
+
+        direction_lon = (
+            lon_difference / direction_norm
+        )
 
     for target_distance in [5, 10, 15, 20]:
 
         distance_input = input_data.copy()
 
-        # Approximate conversion from km to latitude/longitude degrees
+        # Approximate conversion from km
+        # to latitude/longitude degrees
+
         lat_offset = (
-            target_distance * direction_lat / 111
+            target_distance *
+            direction_lat / 111
         )
 
         lon_offset = (
-            target_distance * direction_lon /
-            (111 * np.cos(np.radians(restaurant_lat)))
+            target_distance *
+            direction_lon /
+            (
+                111 *
+                np.cos(
+                    np.radians(restaurant_lat)
+                )
+            )
         )
 
-        new_delivery_lat = restaurant_lat + lat_offset
-        new_delivery_lon = restaurant_lon + lon_offset
+        new_delivery_lat = (
+            restaurant_lat + lat_offset
+        )
 
-        distance_input["Delivery_location_latitude"] = new_delivery_lat
-        distance_input["Delivery_location_longitude"] = new_delivery_lon
-        distance_input["distance_km"] = target_distance
+        new_delivery_lon = (
+            restaurant_lon + lon_offset
+        )
 
-        distance_prediction = model.predict(distance_input)[0]
+        distance_input[
+            "Delivery_location_latitude"
+        ] = new_delivery_lat
+
+        distance_input[
+            "Delivery_location_longitude"
+        ] = new_delivery_lon
+
+        distance_input[
+            "distance_km"
+        ] = target_distance
+
+        distance_prediction = (
+            model.predict(distance_input)[0]
+        )
 
         distance_results.append({
             "Distance (km)": target_distance,
-            "Predicted Time (min)": round(distance_prediction, 1)
+            "Predicted Time (min)": round(
+                distance_prediction,
+                1
+            )
         })
 
-    distance_df = pd.DataFrame(distance_results)
+    distance_df = pd.DataFrame(
+        distance_results
+    )
 
     st.write("### 📍 Distance Scenario Comparison")
 
@@ -436,85 +507,316 @@ if st.button("Predict Delivery Time"):
         y="Predicted Time (min)"
     )
 
-    # Preprocess input for SHAP and prediction stability
-    processed_input = model.named_steps["preprocessor"].transform(input_data)
+    # =========================================================
+    # Combined Current vs Improved Scenario
+    # =========================================================
 
-    # Prediction stability
+    improved_input = input_data.copy()
+
+    # Reduce multiple deliveries
+    improved_input[
+        "multiple_deliveries"
+    ] = 1.0
+
+    # Use less congested traffic
+    improved_input[
+        "Road_traffic_density"
+    ] = "Low"
+
+    # Use favorable weather
+    improved_input[
+        "Weatherconditions"
+    ] = "conditions Sunny"
+
+    # ---------------------------------------------------------
+    # Set improved distance to 10 km while maintaining
+    # approximately the same direction
+    # ---------------------------------------------------------
+
+    improved_distance = 10
+
+    improved_lat_offset = (
+        improved_distance *
+        direction_lat / 111
+    )
+
+    improved_lon_offset = (
+        improved_distance *
+        direction_lon /
+        (
+            111 *
+            np.cos(
+                np.radians(restaurant_lat)
+            )
+        )
+    )
+
+    improved_input[
+        "Delivery_location_latitude"
+    ] = (
+        restaurant_lat +
+        improved_lat_offset
+    )
+
+    improved_input[
+        "Delivery_location_longitude"
+    ] = (
+        restaurant_lon +
+        improved_lon_offset
+    )
+
+    improved_input[
+        "distance_km"
+    ] = improved_distance
+
+    improved_prediction = (
+        model.predict(improved_input)[0]
+    )
+
+    combined_time_saved = (
+        prediction -
+        improved_prediction
+    )
+
+    st.write(
+        "### 🚀 Current vs Improved Scenario"
+    )
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.metric(
+            "Current Prediction",
+            f"{prediction:.1f} min"
+        )
+
+    with col2:
+        st.metric(
+            "Improved Scenario",
+            f"{improved_prediction:.1f} min"
+        )
+
+    if combined_time_saved > 0:
+        st.success(
+            f"⏱️ Potential time reduction: "
+            f"**{combined_time_saved:.1f} minutes**"
+        )
+    elif combined_time_saved < 0:
+        st.info(
+            f"⏱️ The improved scenario is "
+            f"{abs(combined_time_saved):.1f} minutes slower."
+        )
+    else:
+        st.info(
+            "⏱️ No predicted change between "
+            "the two scenarios."
+        )
+
+    st.write(
+        "📋 Improved scenario: "
+        "**1 multiple delivery, Low traffic, "
+        "Sunny weather, 10 km distance**."
+    )
+
+    # =========================================================
+    # Preprocess input for SHAP and prediction stability
+    # =========================================================
+
+    processed_input = (
+        model.named_steps[
+            "preprocessor"
+        ].transform(input_data)
+    )
+
+    # =========================================================
+    # Prediction Stability
+    # =========================================================
+
     tree_predictions = [
         tree.predict(processed_input)[0]
-        for tree in model.named_steps["model"].estimators_
+        for tree in model.named_steps[
+            "model"
+        ].estimators_
     ]
 
-    prediction_std = np.std(tree_predictions)
+    prediction_std = np.std(
+        tree_predictions
+    )
 
-    # SHAP explanation
-    shap_values = explainer.shap_values(processed_input)
+    # =========================================================
+    # SHAP Explanation
+    # =========================================================
 
-    feature_names = model.named_steps[
-        "preprocessor"
-    ].get_feature_names_out()
+    shap_values = explainer.shap_values(
+        processed_input
+    )
+
+    feature_names = (
+        model.named_steps[
+            "preprocessor"
+        ].get_feature_names_out()
+    )
 
     shap_df = pd.DataFrame({
         "Feature": feature_names,
         "SHAP_Value": shap_values[0]
     })
 
-    shap_df["Abs_SHAP"] = shap_df["SHAP_Value"].abs()
+    shap_df["Abs_SHAP"] = (
+        shap_df["SHAP_Value"].abs()
+    )
 
-    top_factors = shap_df.sort_values(
-        "Abs_SHAP",
-        ascending=False
-    ).head(6)
+    top_factors = (
+        shap_df
+        .sort_values(
+            "Abs_SHAP",
+            ascending=False
+        )
+        .head(6)
+    )
 
+    # =========================================================
     # Human-readable feature names
+    # =========================================================
+
     feature_labels = {
-        "num__Delivery_person_Age": "👤 Delivery Person Age",
-        "num__Delivery_person_Ratings": "⭐ Delivery Person Rating",
-        "num__distance_km": "📍 Distance",
-        "num__Vehicle_condition": "🛵 Vehicle Condition",
-        "num__multiple_deliveries": "📦 Multiple Deliveries",
-        "num__Preparation_Time_min": "⏱️ Preparation Time",
-        "num__Order_Hour": "🕐 Order Hour",
-        "num__Order_Picked_Hour": "🕐 Order Picked Hour",
-        "num__Suspicious_Age_Rating": "⚠️ Data Quality Flag",
-        "cat__Road_traffic_density_High": "🚦 High Traffic",
-        "cat__Road_traffic_density_Jam": "🚦 Jam Traffic",
-        "cat__Road_traffic_density_Low": "🚦 Low Traffic",
-        "cat__Road_traffic_density_Medium": "🚦 Medium Traffic",
-        "cat__Weatherconditions_conditions Cloudy": "🌦️ Cloudy Weather",
-        "cat__Weatherconditions_conditions Fog": "🌫️ Fog",
-        "cat__Weatherconditions_conditions Sandstorms": "🌪️ Sandstorms",
-        "cat__Weatherconditions_conditions Stormy": "⛈️ Stormy Weather",
-        "cat__Weatherconditions_conditions Sunny": "☀️ Sunny Weather",
-        "cat__Weatherconditions_conditions Windy": "💨 Windy Weather",
-        "cat__Festival_Yes": "🎉 Festival",
-        "cat__Festival_No": "🎉 No Festival",
-        "cat__City_Metropolitian": "🏙️ Metropolitan City",
-        "cat__City_Urban": "🏙️ Urban City",
-        "cat__City_Semi-Urban": "🏙️ Semi-Urban City",
-        "cat__Order_Period_Morning": "🌅 Morning",
-        "cat__Order_Period_Afternoon": "☀️ Afternoon",
-        "cat__Order_Period_Evening": "🌆 Evening",
-        "cat__Order_Period_Night": "🌙 Night",
-        "cat__Order_Day_Monday": "📅 Monday",
-        "cat__Order_Day_Tuesday": "📅 Tuesday",
-        "cat__Order_Day_Wednesday": "📅 Wednesday",
-        "cat__Order_Day_Thursday": "📅 Thursday",
-        "cat__Order_Day_Friday": "📅 Friday",
-        "cat__Order_Day_Saturday": "📅 Saturday",
-        "cat__Order_Day_Sunday": "📅 Sunday",
-        "cat__Type_of_order_Buffet": "🍽️ Buffet Order",
-        "cat__Type_of_order_Drinks": "🥤 Drinks Order",
-        "cat__Type_of_order_Meal": "🍛 Meal Order",
-        "cat__Type_of_order_Snack": "🍔 Snack Order",
-        "cat__Type_of_vehicle_bicycle": "🚲 Bicycle",
-        "cat__Type_of_vehicle_electric_scooter": "🛴 Electric Scooter",
-        "cat__Type_of_vehicle_motorcycle": "🏍️ Motorcycle",
-        "cat__Type_of_vehicle_scooter": "🛵 Scooter"
+        "num__Delivery_person_Age":
+            "👤 Delivery Person Age",
+
+        "num__Delivery_person_Ratings":
+            "⭐ Delivery Person Rating",
+
+        "num__distance_km":
+            "📍 Distance",
+
+        "num__Vehicle_condition":
+            "🛵 Vehicle Condition",
+
+        "num__multiple_deliveries":
+            "📦 Multiple Deliveries",
+
+        "num__Preparation_Time_min":
+            "⏱️ Preparation Time",
+
+        "num__Order_Hour":
+            "🕐 Order Hour",
+
+        "num__Order_Picked_Hour":
+            "🕐 Order Picked Hour",
+
+        "num__Suspicious_Age_Rating":
+            "⚠️ Data Quality Flag",
+
+        "cat__Road_traffic_density_High":
+            "🚦 High Traffic",
+
+        "cat__Road_traffic_density_Jam":
+            "🚦 Jam Traffic",
+
+        "cat__Road_traffic_density_Low":
+            "🚦 Low Traffic",
+
+        "cat__Road_traffic_density_Medium":
+            "🚦 Medium Traffic",
+
+        "cat__Weatherconditions_conditions Cloudy":
+            "🌦️ Cloudy Weather",
+
+        "cat__Weatherconditions_conditions Fog":
+            "🌫️ Fog",
+
+        "cat__Weatherconditions_conditions Sandstorms":
+            "🌪️ Sandstorms",
+
+        "cat__Weatherconditions_conditions Stormy":
+            "⛈️ Stormy Weather",
+
+        "cat__Weatherconditions_conditions Sunny":
+            "☀️ Sunny Weather",
+
+        "cat__Weatherconditions_conditions Windy":
+            "💨 Windy Weather",
+
+        "cat__Festival_Yes":
+            "🎉 Festival",
+
+        "cat__Festival_No":
+            "🎉 No Festival",
+
+        "cat__City_Metropolitian":
+            "🏙️ Metropolitan City",
+
+        "cat__City_Urban":
+            "🏙️ Urban City",
+
+        "cat__City_Semi-Urban":
+            "🏙️ Semi-Urban City",
+
+        "cat__Order_Period_Morning":
+            "🌅 Morning",
+
+        "cat__Order_Period_Afternoon":
+            "☀️ Afternoon",
+
+        "cat__Order_Period_Evening":
+            "🌆 Evening",
+
+        "cat__Order_Period_Night":
+            "🌙 Night",
+
+        "cat__Order_Day_Monday":
+            "📅 Monday",
+
+        "cat__Order_Day_Tuesday":
+            "📅 Tuesday",
+
+        "cat__Order_Day_Wednesday":
+            "📅 Wednesday",
+
+        "cat__Order_Day_Thursday":
+            "📅 Thursday",
+
+        "cat__Order_Day_Friday":
+            "📅 Friday",
+
+        "cat__Order_Day_Saturday":
+            "📅 Saturday",
+
+        "cat__Order_Day_Sunday":
+            "📅 Sunday",
+
+        "cat__Type_of_order_Buffet":
+            "🍽️ Buffet Order",
+
+        "cat__Type_of_order_Drinks":
+            "🥤 Drinks Order",
+
+        "cat__Type_of_order_Meal":
+            "🍛 Meal Order",
+
+        "cat__Type_of_order_Snack":
+            "🍔 Snack Order",
+
+        "cat__Type_of_vehicle_bicycle":
+            "🚲 Bicycle",
+
+        "cat__Type_of_vehicle_electric_scooter":
+            "🛴 Electric Scooter",
+
+        "cat__Type_of_vehicle_motorcycle":
+            "🏍️ Motorcycle",
+
+        "cat__Type_of_vehicle_scooter":
+            "🛵 Scooter"
     }
 
-    # Display top SHAP factors
-    st.write("### 🔍 What is affecting this prediction?")
+    # =========================================================
+    # Display Top SHAP Factors
+    # =========================================================
+
+    st.write(
+        "### 🔍 What is affecting this prediction?"
+    )
 
     for _, row in top_factors.iterrows():
 
@@ -523,113 +825,206 @@ if st.button("Predict Delivery Time"):
 
         display_name = feature_labels.get(
             feature,
-            feature.replace("num__", "").replace("cat__", "")
+            feature
+            .replace("num__", "")
+            .replace("cat__", "")
         )
 
         # Get actual input value
+
         if feature.startswith("num__"):
-            original_feature = feature.replace("num__", "")
-            input_value = input_data[original_feature].iloc[0]
+
+            original_feature = (
+                feature.replace(
+                    "num__",
+                    ""
+                )
+            )
+
+            input_value = (
+                input_data[
+                    original_feature
+                ].iloc[0]
+            )
 
             if pd.isna(input_value):
                 input_value = "Missing"
 
         else:
-            original_feature = feature.replace("cat__", "")
+
+            original_feature = (
+                feature.replace(
+                    "cat__",
+                    ""
+                )
+            )
+
             input_value = "Yes"
 
             if "_" in original_feature:
-                category_value = original_feature.split("_")[-1]
+
+                category_value = (
+                    original_feature
+                    .split("_")[-1]
+                )
 
                 if category_value not in [
-                    str(x) for x in input_data.columns
+                    str(x)
+                    for x in input_data.columns
                 ]:
                     input_value = category_value
 
         if shap_value > 0:
+
             st.write(
-                f"🔴 {display_name} ({input_value}) "
-                f"— increased estimate by {shap_value:.1f} min"
-            )
-        else:
-            st.write(
-                f"🟢 {display_name} ({input_value}) "
-                f"— reduced estimate by {abs(shap_value):.1f} min"
+                f"🔴 {display_name} "
+                f"({input_value}) "
+                f"— increased estimate by "
+                f"{shap_value:.1f} min"
             )
 
-    # Delivery status
+        else:
+
+            st.write(
+                f"🟢 {display_name} "
+                f"({input_value}) "
+                f"— reduced estimate by "
+                f"{abs(shap_value):.1f} min"
+            )
+
+    # =========================================================
+    # Delivery Status
+    # =========================================================
+
     if prediction <= 21:
+
         status = "🟢 Normal Delivery"
+
     elif prediction <= 29:
+
         status = "🟡 Moderate Delivery Time"
+
     else:
+
         status = "🔴 High Delivery Time"
 
-    # Distance category
+    # =========================================================
+    # Distance Category
+    # =========================================================
+
     if distance_km < 5:
+
         distance_category = "Short"
+
     elif distance_km < 10:
+
         distance_category = "Medium"
+
     elif distance_km < 15:
+
         distance_category = "Long"
+
     else:
+
         distance_category = "Very Long"
 
-    # Prediction history
+    # =========================================================
+    # Prediction History
+    # =========================================================
+
     st.session_state.prediction_history.append({
-        "Predicted Time": round(prediction, 1),
-        "Status": status,
-        "Distance (km)": round(distance_km, 1),
-        "Distance Category": distance_category,
-        "Traffic": traffic,
-        "Weather": weather.replace("conditions ", "")
+        "Predicted Time":
+            round(prediction, 1),
+
+        "Status":
+            status,
+
+        "Distance (km)":
+            round(distance_km, 1),
+
+        "Distance Category":
+            distance_category,
+
+        "Traffic":
+            traffic,
+
+        "Weather":
+            weather.replace(
+                "conditions ",
+                ""
+            )
     })
 
-    # Prediction result
+    # =========================================================
+    # Prediction Result
+    # =========================================================
+
     st.success(
-        f"Predicted Delivery Time: **{prediction:.1f} minutes**"
+        f"Predicted Delivery Time: "
+        f"**{prediction:.1f} minutes**"
     )
 
     st.info(
         f"Delivery Status: **{status}**"
     )
 
-    # Delivery risk
+    # =========================================================
+    # Delivery Risk
+    # =========================================================
+
     if prediction >= 30:
+
         st.warning(
             "⚠️ High delivery risk detected. "
-            "Consider checking traffic, weather, distance, "
-            "and multiple-delivery conditions."
+            "Consider checking traffic, weather, "
+            "distance, and multiple-delivery conditions."
         )
 
     elif prediction >= 22:
+
         st.info(
             "🟡 Moderate delivery time. "
-            "Some conditions may be contributing to the delay."
+            "Some conditions may be contributing "
+            "to the delay."
         )
 
     else:
+
         st.success(
             "✅ Delivery conditions look favorable."
         )
 
+    # =========================================================
     # Smart Risk Factors
+    # =========================================================
+
     positive_factors = top_factors[
         top_factors["SHAP_Value"] > 0
     ]
 
-    if prediction >= 30 and len(positive_factors) > 0:
+    if (
+        prediction >= 30
+        and len(positive_factors) > 0
+    ):
 
-        st.write("### 🧠 Why is this delivery high risk?")
+        st.write(
+            "### 🧠 Why is this delivery high risk?"
+        )
 
-        for _, row in positive_factors.head(3).iterrows():
+        for _, row in (
+            positive_factors
+            .head(3)
+            .iterrows()
+        ):
 
             feature = row["Feature"]
             shap_value = row["SHAP_Value"]
 
             display_name = feature_labels.get(
                 feature,
-                feature.replace("num__", "").replace("cat__", "")
+                feature
+                .replace("num__", "")
+                .replace("cat__", "")
             )
 
             st.write(
@@ -638,15 +1033,24 @@ if st.button("Predict Delivery Time"):
                 f"to the prediction."
             )
 
+    # =========================================================
     # SHAP-driven Delivery Recommendations
-    st.write("### 💡 Delivery Recommendations")
+    # =========================================================
+
+    st.write(
+        "### 💡 Delivery Recommendations"
+    )
 
     recommendation_given = False
 
-    for _, row in positive_factors.sort_values(
-        "SHAP_Value",
-        ascending=False
-    ).iterrows():
+    for _, row in (
+        positive_factors
+        .sort_values(
+            "SHAP_Value",
+            ascending=False
+        )
+        .iterrows()
+    ):
 
         feature = row["Feature"]
         shap_value = row["SHAP_Value"]
@@ -654,23 +1058,32 @@ if st.button("Predict Delivery Time"):
         if shap_value <= 0:
             continue
 
-        if feature == "num__multiple_deliveries" and multiple_deliveries >= 2:
+        if (
+            feature ==
+            "num__multiple_deliveries"
+            and multiple_deliveries >= 2
+        ):
 
             st.write(
                 f"📦 Multiple deliveries are adding "
                 f"**{shap_value:.1f} minutes**. "
-                "Consider reducing multiple deliveries assigned "
-                "to the same delivery person."
+                "Consider reducing multiple deliveries "
+                "assigned to the same delivery person."
             )
 
             recommendation_given = True
 
-        elif feature == "num__distance_km" and distance_km >= 10:
+        elif (
+            feature ==
+            "num__distance_km"
+            and distance_km >= 10
+        ):
 
             st.write(
-                f"📍 Distance is adding **{shap_value:.1f} minutes**. "
-                "Consider assigning a nearby delivery person "
-                "when possible."
+                f"📍 Distance is adding "
+                f"**{shap_value:.1f} minutes**. "
+                "Consider assigning a nearby delivery "
+                "person when possible."
             )
 
             recommendation_given = True
@@ -683,7 +1096,8 @@ if st.button("Predict Delivery Time"):
             st.write(
                 f"🚦 Traffic conditions are adding "
                 f"**{shap_value:.1f} minutes**. "
-                "Consider less congested routes or delivery periods."
+                "Consider less congested routes "
+                "or delivery periods."
             )
 
             recommendation_given = True
@@ -699,207 +1113,45 @@ if st.button("Predict Delivery Time"):
             st.write(
                 f"🌦️ Weather conditions are adding "
                 f"**{shap_value:.1f} minutes**. "
-                "Allow additional delivery time or prioritize "
-                "suitable routes."
+                "Allow additional delivery time "
+                "or prioritize suitable routes."
             )
 
             recommendation_given = True
 
-        elif feature == "num__Vehicle_condition" and vehicle_condition == 0:
+        elif (
+            feature ==
+            "num__Vehicle_condition"
+            and vehicle_condition == 0
+        ):
 
             st.write(
                 f"🛵 Vehicle condition is adding "
                 f"**{shap_value:.1f} minutes**. "
-                "Consider assigning a better-conditioned vehicle."
+                "Consider assigning a "
+                "better-conditioned vehicle."
             )
 
             recommendation_given = True
 
-        elif feature == "num__Delivery_person_Ratings":
+        elif (
+            feature ==
+            "num__Delivery_person_Ratings"
+        ):
 
             st.write(
-                f"⭐ Delivery person rating is contributing "
-                f"**{shap_value:.1f} minutes**. "
-                "Consider assigning experienced, highly rated "
-                "delivery personnel when possible."
+                f"⭐ Delivery person rating is "
+                f"contributing **{shap_value:.1f} minutes**. "
+                "Consider assigning experienced, "
+                "highly rated delivery personnel "
+                "when possible."
             )
 
             recommendation_given = True
 
     if not recommendation_given:
+
         st.write(
-            "✅ No major corrective action is recommended "
-            "for the current prediction."
+            "✅ No major corrective action is "
+            "recommended for the current prediction."
         )
-# =========================
-# Prediction History
-# =========================
-
-if len(st.session_state.prediction_history) > 0:
-
-    history_df = pd.DataFrame(
-        st.session_state.prediction_history
-    )
-
-    st.subheader("📊 Prediction History")
-
-    st.dataframe(
-        history_df,
-        hide_index=True
-    )
-
-
-# =========================
-# DeliveryGuard Analytics
-# =========================
-
-if len(st.session_state.prediction_history) > 0:
-
-    st.subheader("📈 DeliveryGuard Analytics")
-
-    total_predictions = len(history_df)
-
-    average_prediction = history_df["Predicted Time"].mean()
-
-    normal_count = (
-        history_df["Status"] == "🟢 Normal Delivery"
-    ).sum()
-
-    moderate_count = (
-        history_df["Status"] == "🟡 Moderate Delivery Time"
-    ).sum()
-
-    high_count = (
-        history_df["Status"] == "🔴 High Delivery Time"
-    ).sum()
-
-    high_rate = (
-        high_count / total_predictions
-    ) * 100
-
-    col1, col2, col3, col4 = st.columns(4)
-
-    with col1:
-        st.metric(
-            "Total Predictions",
-            total_predictions
-        )
-
-    with col2:
-        st.metric(
-            "Average Time",
-            f"{average_prediction:.1f} min"
-        )
-
-    with col3:
-        st.metric(
-            "🟢 Normal",
-            normal_count
-        )
-
-    with col4:
-        st.metric(
-            "High Delivery Rate",
-            f"{high_rate:.1f}%"
-        )
-
-    st.write("### 📊 Delivery Status Distribution")
-
-    status_chart = pd.DataFrame({
-        "Status": [
-            "Normal",
-            "Moderate",
-            "High"
-        ],
-        "Count": [
-            normal_count,
-            moderate_count,
-            high_count
-        ]
-    })
-
-    st.bar_chart(
-        status_chart,
-        x="Status",
-        y="Count"
-    )
-
-    st.dataframe(
-        status_chart,
-        hide_index=True
-    )
-
-    st.write("### 🚦 Average Predicted Time by Traffic")
-
-    traffic_analysis = (
-        history_df
-        .groupby("Traffic")["Predicted Time"]
-        .mean()
-        .reset_index()
-    )
-
-    traffic_analysis["Predicted Time"] = (
-        traffic_analysis["Predicted Time"].round(1)
-    )
-
-    st.bar_chart(
-        traffic_analysis,
-        x="Traffic",
-        y="Predicted Time"
-    )
-
-    st.dataframe(
-        traffic_analysis,
-        hide_index=True
-    )
-
-    st.write("### 📍 Average Predicted Time by Distance")
-
-    distance_analysis = (
-        history_df
-        .groupby("Distance Category")["Predicted Time"]
-        .mean()
-        .reindex(
-            ["Short", "Medium", "Long", "Very Long"]
-        )
-        .dropna()
-        .reset_index()
-    )
-
-    distance_analysis["Predicted Time"] = (
-        distance_analysis["Predicted Time"].round(1)
-    )
-
-    st.bar_chart(
-        distance_analysis,
-        x="Distance Category",
-        y="Predicted Time"
-    )
-
-    st.dataframe(
-        distance_analysis,
-        hide_index=True
-    )
-    st.write("### 🌦️ Average Predicted Time by Weather")
-
-    weather_analysis = (
-        history_df
-        .groupby("Weather")["Predicted Time"]
-        .mean()
-        .reset_index()
-    )
-
-    weather_analysis["Predicted Time"] = (
-        weather_analysis["Predicted Time"].round(1)
-    )
-
-    st.bar_chart(
-        weather_analysis,
-        x="Weather",
-        y="Predicted Time"
-    )
-
-    st.dataframe(
-        weather_analysis,
-        hide_index=True
-    )
