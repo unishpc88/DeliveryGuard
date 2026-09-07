@@ -298,7 +298,76 @@ if st.button("Predict Delivery Time"):
         x="Multiple Deliveries",
         y="Predicted Time (min)"
     )
-        
+
+    # Compare different traffic scenarios
+    traffic_results = []
+
+    for traffic_scenario in ["Low", "Medium", "High", "Jam"]:
+
+        traffic_input = input_data.copy()
+        traffic_input["Road_traffic_density"] = traffic_scenario
+
+        traffic_prediction = model.predict(traffic_input)[0]
+
+        traffic_results.append({
+            "Traffic Condition": traffic_scenario,
+            "Predicted Time (min)": round(traffic_prediction, 1)
+        })
+
+    traffic_df = pd.DataFrame(traffic_results)
+
+    st.write("### 🚦 Traffic Scenario Comparison")
+
+    st.dataframe(
+        traffic_df,
+        hide_index=True
+    )
+
+    st.line_chart(
+        traffic_df,
+        x="Traffic Condition",
+        y="Predicted Time (min)"
+    )
+
+    # Compare different weather scenarios
+    weather_results = []
+
+    for weather_scenario in [
+        "conditions Sunny",
+        "conditions Cloudy",
+        "conditions Fog",
+        "conditions Stormy",
+        "conditions Sandstorms",
+        "conditions Windy"
+    ]:
+
+        weather_input = input_data.copy()
+        weather_input["Weatherconditions"] = weather_scenario
+
+        weather_prediction = model.predict(weather_input)[0]
+
+        weather_results.append({
+            "Weather Condition": weather_scenario.replace(
+                "conditions ", ""
+            ),
+            "Predicted Time (min)": round(weather_prediction, 1)
+        })
+
+    weather_df = pd.DataFrame(weather_results)
+
+    st.write("### 🌦️ Weather Scenario Comparison")
+
+    st.dataframe(
+        weather_df,
+        hide_index=True
+    )
+
+    st.bar_chart(
+        weather_df,
+        x="Weather Condition",
+        y="Predicted Time (min)"
+    )
+
     # Preprocess input for SHAP and prediction stability
     processed_input = model.named_steps["preprocessor"].transform(input_data)
 
